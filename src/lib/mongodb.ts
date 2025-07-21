@@ -6,7 +6,8 @@ if (!process.env.MONGODB_URI) {
   )
 }
 
-const MONGODB_URI: string = process.env.MONGODB_URI
+const MONGODB_URI: string =
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce'
 
 interface MongooseCache {
   conn: typeof mongoose | null

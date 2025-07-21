@@ -22,13 +22,6 @@ const nextConfig = {
       },
     ],
   },
-  // API routes optimization
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-    responseLimit: '8mb',
-  },
 }
 
 module.exports = nextConfig

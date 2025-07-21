@@ -1,4 +1,4 @@
-import { Document, Types } from 'mongoose'
+import { Document, Types, Model } from 'mongoose'
 
 // Base interfaces for MongoDB documents
 export interface BaseDocument extends Document {
@@ -82,6 +82,21 @@ export interface ICart extends BaseDocument {
   sessionId: string
   items: ICartItem[]
   totalAmount: number
+  // Instance methods
+  addItem(skuId: string, quantity: number, unitPrice: number): Promise<ICart>
+  updateItem(skuId: string, quantity: number): Promise<ICart>
+  removeItem(skuId: string): Promise<ICart>
+  clearItems(): Promise<ICart>
+  getItemCount(): number
+  hasItem(skuId: string): boolean
+  getItem(skuId: string): ICartItem | undefined
+}
+
+export interface ICartModel extends Model<ICart> {
+  findBySession(sessionId: string): Promise<ICart | null>
+  createForSession(sessionId: string): Promise<ICart>
+  findOrCreateBySession(sessionId: string): Promise<ICart>
+  cleanupExpired(daysOld?: number): Promise<any>
 }
 
 export interface ICartItemInput {

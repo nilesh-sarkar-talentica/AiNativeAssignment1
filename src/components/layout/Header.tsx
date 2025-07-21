@@ -5,8 +5,12 @@ import { ShoppingCart, Search, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { useCart } from '@/hooks/use-cart'
 
 export default function Header() {
+  const { getItemCount } = useCart()
+  const itemCount = getItemCount()
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -53,12 +57,14 @@ export default function Header() {
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative">
               <ShoppingCart className="h-5 w-5" />
-              <Badge
-                variant="destructive"
-                className="absolute -right-2 -top-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
-              >
-                0
-              </Badge>
+              {itemCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -right-2 -top-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                >
+                  {itemCount > 99 ? '99+' : itemCount}
+                </Badge>
+              )}
             </Button>
           </Link>
 
