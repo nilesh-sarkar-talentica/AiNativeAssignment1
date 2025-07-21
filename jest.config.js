@@ -34,6 +34,13 @@ const config = {
     },
   },
   testTimeout: 10000,
+  extensionsToTreatAsEsm: ['.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
+  transformIgnorePatterns: ['node_modules/(?!(bson|mongodb|mongoose)/)'],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
