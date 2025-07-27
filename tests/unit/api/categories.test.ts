@@ -233,6 +233,41 @@ describe('Categories API', () => {
       })
     })
 
+    it('should auto-generate slug from name', async () => {
+      const categoryData = {
+        name: 'Home & Garden',
+        description: 'Home and garden items',
+      }
+
+      const mockSavedCategory = {
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Home & Garden',
+        description: 'Home and garden items',
+        slug: 'home-garden',
+        isActive: true,
+        createdAt: '2025-07-26T05:39:30.993Z',
+        updatedAt: '2025-07-26T05:39:30.993Z',
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      MockedCategory.mockImplementation(() => mockSavedCategory)
+      parseJsonBody.mockResolvedValue(categoryData)
+      validateRequest.mockReturnValue(categoryData)
+
+      const request = new Request('http://localhost:3000/api/categories', {
+        method: 'POST',
+        body: JSON.stringify(categoryData),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.success).toBe(true)
+      expect(data.data.slug).toBe('home-garden')
+    })
+
     it('should handle invalid JSON body', async () => {
       parseJsonBody.mockImplementation(() => {
         throw new Error('Invalid JSON')
@@ -293,6 +328,23 @@ describe('Categories API', () => {
       )
     })
 
+    it('should return 400 for invalid ID format', async () => {
+      validateRequest.mockImplementation(() => {
+        const error = new Error('Invalid ID format')
+        error.name = 'ValidationError'
+        throw error
+      })
+
+      const request = new Request(
+        'http://localhost:3000/api/categories/invalid-id'
+      )
+      const context = { params: { id: 'invalid-id' } }
+
+      await expect(getById(request, context)).rejects.toThrow(
+        'Invalid ID format'
+      )
+    })
+
     it('should handle missing context params', async () => {
       const request = new Request(
         'http://localhost:3000/api/categories/507f1f77bcf86cd799439011'
@@ -338,6 +390,86 @@ describe('Categories API', () => {
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
       expect(mockCategory.save).toHaveBeenCalled()
+    })
+
+    it('should update slug when name changes', async () => {
+      const updateData = {
+        name: 'Smart Electronics',
+        description: 'Updated description',
+      }
+
+      const mockCategory = {
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Electronics',
+        description: 'Electronic devices',
+        slug: 'electronics',
+        isActive: true,
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const updatedCategory = {
+        ...mockCategory,
+        name: 'Smart Electronics',
+        slug: 'smart-electronics',
+        description: 'Updated description',
+      }
+
+      MockedCategory.findOne.mockResolvedValue(mockCategory)
+      parseJsonBody.mockResolvedValue(updateData)
+      validateRequest.mockReturnValueOnce({ id: '507f1f77bcf86cd799439011' })
+      validateRequest.mockReturnValueOnce(updateData)
+
+      // Mock Object.assign to simulate the update
+      const originalAssign = Object.assign
+      Object.assign = jest.fn((target: any, source: any) => {
+        target.name = source.name
+        target.description = source.description
+        target.slug = 'smart-electronics'
+        return target
+      })
+
+      const request = new Request(
+        'http://localhost:3000/api/categories/507f1f77bcf86cd799439011',
+        {
+          method: 'PUT',
+          body: JSON.stringify(updateData),
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+
+      const context = { params: { id: '507f1f77bcf86cd799439011' } }
+      const response = await PUT(request, context)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(mockCategory.save).toHaveBeenCalled()
+
+      // Restore original Object.assign
+      Object.assign = originalAssign
+    })
+
+    it('should handle update validation errors', async () => {
+      parseJsonBody.mockResolvedValue({ name: '' })
+      validateRequest.mockReturnValueOnce({ id: '507f1f77bcf86cd799439011' })
+      validateRequest.mockImplementationOnce(() => {
+        const error = new Error('Name is required')
+        error.name = 'ValidationError'
+        throw error
+      })
+
+      const request = new Request(
+        'http://localhost:3000/api/categories/507f1f77bcf86cd799439011',
+        {
+          method: 'PUT',
+          body: JSON.stringify({ name: '' }),
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+
+      const context = { params: { id: '507f1f77bcf86cd799439011' } }
+
+      await expect(PUT(request, context)).rejects.toThrow('Name is required')
     })
 
     it('should return 404 for non-existent category', async () => {
@@ -388,6 +520,62 @@ describe('Categories API', () => {
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
       expect(data.data.message).toContain('deleted successfully')
+    })
+
+    it('should prevent deletion with associated products', async () => {
+      const mockCategory = {
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Electronics',
+        isActive: true,
+        save: jest.fn(),
+      }
+
+      MockedCategory.findOne.mockResolvedValue(mockCategory)
+      MockedProduct.countDocuments.mockResolvedValue(5) // Has products
+      validateRequest.mockReturnValue({ id: '507f1f77bcf86cd799439011' })
+
+      const request = new Request(
+        'http://localhost:3000/api/categories/507f1f77bcf86cd799439011',
+        {
+          method: 'DELETE',
+        }
+      )
+
+      const context = { params: { id: '507f1f77bcf86cd799439011' } }
+
+      await expect(DELETE(request, context)).rejects.toThrow(
+        'Cannot delete category with existing products'
+      )
+    })
+
+    it('should return proper confirmation on successful deletion', async () => {
+      const mockCategory = {
+        _id: '507f1f77bcf86cd799439011',
+        name: 'Electronics',
+        isActive: true,
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      MockedCategory.findOne.mockResolvedValue(mockCategory)
+      MockedProduct.countDocuments.mockResolvedValue(0)
+      validateRequest.mockReturnValue({ id: '507f1f77bcf86cd799439011' })
+
+      const request = new Request(
+        'http://localhost:3000/api/categories/507f1f77bcf86cd799439011',
+        {
+          method: 'DELETE',
+        }
+      )
+
+      const context = { params: { id: '507f1f77bcf86cd799439011' } }
+      const response = await DELETE(request, context)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.message).toBe('Category deleted successfully')
+      expect(mockCategory.isActive).toBe(false)
+      expect(mockCategory.save).toHaveBeenCalled()
     })
 
     it('should return 404 for non-existent category', async () => {

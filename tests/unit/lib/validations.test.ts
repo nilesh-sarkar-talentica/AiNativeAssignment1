@@ -186,6 +186,7 @@ describe('Validation Library', () => {
         name: 'iPhone 15 128GB Black',
         price: 999.99,
         inventory: 10,
+        productId: '507f1f77bcf86cd799439011',
         attributes: { storage: '128GB', color: 'Black' },
       }
 
@@ -204,6 +205,7 @@ describe('Validation Library', () => {
         name: 'iPhone 15 128GB Black',
         price: 999.99,
         inventory: 10,
+        productId: '507f1f77bcf86cd799439011',
       }
 
       const result = createSKUSchema.safeParse(skuWithLowercase)

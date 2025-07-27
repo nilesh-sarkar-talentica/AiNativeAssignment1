@@ -39,7 +39,7 @@ export const createProductSchema = z.object({
     .number()
     .min(0, 'Base price cannot be negative')
     .finite('Base price must be a valid number'),
-  images: z.array(z.string().url('Invalid image URL')).default([]).optional(),
+  images: z.array(z.string().url('Invalid image URL')).default([]),
 })
 
 export const updateProductSchema = createProductSchema.partial()
@@ -74,12 +74,12 @@ export const productQuerySchema = z.object({
 export const createSKUSchema = z.object({
   sku: z
     .string()
-    .regex(
-      /^[A-Z0-9-]+$/,
-      'SKU must contain only alphanumeric characters and hyphens'
-    )
     .min(1, 'SKU is required')
-    .transform((val) => val.toUpperCase()),
+    .transform((val) => val.toUpperCase())
+    .refine(
+      (val) => /^[A-Z0-9-]+$/.test(val),
+      'SKU must contain only alphanumeric characters and hyphens'
+    ),
   name: z
     .string()
     .min(2, 'SKU name must be at least 2 characters')
@@ -93,7 +93,8 @@ export const createSKUSchema = z.object({
     .number()
     .int('Inventory must be a whole number')
     .min(0, 'Inventory cannot be negative'),
-  attributes: z.record(z.string()).default({}).optional(),
+  productId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid product ID format'),
+  attributes: z.record(z.string()).default({}),
 })
 
 export const updateSKUSchema = createSKUSchema.partial()
